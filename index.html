@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Carnet de Contacts</title>
+<title>Carnet de Gus</title>
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
@@ -712,7 +712,7 @@
 <!-- LOGIN SCREEN -->
 <div id="loginScreen">
   <div class="login-card">
-    <div class="login-logo">Carnet<span> de </span>Gus</div>
+    <div class="login-logo">Carnet <span>de</span> Gus</div>
     <div class="login-subtitle">Connectez-vous pour accéder à vos contacts</div>
 
     <div class="login-field">
@@ -737,7 +737,7 @@
 <div id="appWrapper">
 
 <header>
-  <div class="logo">Carnet<span> de </span>Gus</div>
+  <div class="logo">Carnet <span>de</span> Gus</div>
   <div class="header-actions">
     <span class="sync-dot connecting" id="syncStatus">Connexion…</span>
     <button class="btn btn-ghost" onclick="openImport()">⬆ Importer CSV</button>
@@ -965,19 +965,19 @@ function render() {
   const companies = new Set(contacts.map(c => c.company).filter(Boolean));
   document.getElementById('companyCount').textContent = companies.size;
 
-  // Filters
-  const filterHTML = `
-    <div class="filter-item ${activeFilter==='all'?'active':''}" onclick="setFilter('all')">
+  // Filters — use data-company attribute instead of inline onclick
+  const filterEl = document.getElementById('filterList');
+  filterEl.innerHTML = `
+    <div class="filter-item ${activeFilter==='all'?'active':''}" data-company="all">
       <span>Tous</span><span class="filter-badge">${contacts.length}</span>
     </div>
     ${[...companies].sort().map(co => `
-      <div class="filter-item ${activeFilter===co?'active':''}" onclick="setFilter(${JSON.stringify(co)})">
+      <div class="filter-item ${activeFilter===co?'active':''}" data-company="${co.replace(/"/g,'&quot;')}">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${co}</span>
         <span class="filter-badge">${contacts.filter(c=>c.company===co).length}</span>
       </div>
     `).join('')}
   `;
-  document.getElementById('filterList').innerHTML = filterHTML;
 
   // Toolbar
   document.getElementById('toolbarInfo').innerHTML =
@@ -998,7 +998,7 @@ function render() {
     const color = colorFor(c.company);
     const statusClass = c.emailStatus === 'Verified' ? 'status-Verified' : c.emailStatus === 'Extrapolated' ? 'status-Extrapolated' : 'status-other';
     return `
-    <div class="contact-card ${selectedId===c.id?'selected':''}" onclick="selectContact('${c.id}')">
+    <div class="contact-card ${selectedId===c.id?'selected':''}" data-id="${c.id}">
       <div class="avatar" style="background:${color}22;color:${color}">${initials(c.firstName,c.lastName)}</div>
       <div class="contact-info">
         <div class="contact-name">${c.firstName} ${c.lastName}</div>
@@ -1012,10 +1012,21 @@ function render() {
   }).join('');
 }
 
-function setFilter(f) {
-  activeFilter = f;
+// Delegated event listeners — set once, work forever
+document.getElementById('filterList').addEventListener('click', e => {
+  const item = e.target.closest('.filter-item');
+  if (!item) return;
+  activeFilter = item.dataset.company;
   render();
-}
+});
+
+document.getElementById('contactList').addEventListener('click', e => {
+  const card = e.target.closest('.contact-card');
+  if (!card) return;
+  selectContact(card.dataset.id);
+});
+
+function setFilter(f) { activeFilter = f; render(); }
 
 // ---- DETAIL PANEL ----
 function selectContact(id) {
