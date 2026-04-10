@@ -4,6 +4,77 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Carnet de Contacts</title>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
+  import {
+    getFirestore, collection, doc,
+    onSnapshot, setDoc, deleteDoc, writeBatch
+  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+  import {
+    getAuth, signInWithEmailAndPassword,
+    onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyArHloksEn2abnc5fnFV1dHedGkMXRUzHg",
+    authDomain: "contacts-d1490.firebaseapp.com",
+    projectId: "contacts-d1490",
+    storageBucket: "contacts-d1490.firebasestorage.app",
+    messagingSenderId: "1085052436143",
+    appId: "1:1085052436143:web:389ec52b6816bc04e01e5a",
+    measurementId: "G-E2YVLWYG7Q"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  const auth = getAuth(app);
+
+  let unsubscribeSnapshot = null;
+
+  // ---- AUTH STATE ----
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // Logged in → show app, hide login screen
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appWrapper').style.display = 'block';
+      document.getElementById('userEmail').textContent = user.email;
+
+      // Start Firestore listener
+      const colRef = collection(db, "contacts");
+      window._colRef = colRef;
+      window._setDoc   = (id, data) => setDoc(doc(db, "contacts", id), data);
+      window._deleteDoc = (id)      => deleteDoc(doc(db, "contacts", id));
+      window._writeBatch = ()       => writeBatch(db);
+      window._doc  = (id)           => doc(db, "contacts", id);
+
+      unsubscribeSnapshot = onSnapshot(colRef, (snapshot) => {
+        contacts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setDbStatus('connected');
+        render();
+        if (selectedId) {
+          const still = contacts.find(c => c.id === selectedId);
+          if (still) selectContact(selectedId); else closePanel();
+        }
+      }, (err) => {
+        console.error(err);
+        setDbStatus('error');
+      });
+
+      setDbStatus('connecting');
+    } else {
+      // Logged out → stop listener, show login screen
+      if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+      contacts = [];
+      document.getElementById('appWrapper').style.display = 'none';
+      document.getElementById('loginScreen').style.display = 'flex';
+    }
+  });
+
+  // ---- EXPOSE TO GLOBAL ----
+  window._signIn = (email, password) => signInWithEmailAndPassword(auth, email, password);
+  window._signOut = () => signOut(auth);
+</script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -496,6 +567,137 @@
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
+  /* LOGIN SCREEN */
+  #loginScreen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: var(--bg);
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+  }
+
+  .login-card {
+    width: 380px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 48px 40px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .login-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .login-logo span { color: var(--accent); font-style: italic; }
+
+  .login-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 36px;
+  }
+
+  .login-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .login-field label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .login-field input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .login-field input:focus { border-color: var(--accent); }
+
+  .login-error {
+    font-size: 13px;
+    color: var(--danger);
+    min-height: 20px;
+    margin-bottom: 8px;
+    display: none;
+  }
+  .login-error.show { display: block; }
+
+  .btn-login {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: #0f0f0f;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-login:hover { background: #d8ff70; transform: translateY(-1px); }
+  .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  .login-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #0f0f0f;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* APP WRAPPER — hidden until logged in */
+  #appWrapper { display: none; }
+
+  /* SYNC STATUS */
+  .sync-dot {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  .sync-dot::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .sync-dot.connected::before { background: var(--accent); }
+  .sync-dot.connecting::before { background: #f0c060; animation: pulse 1s infinite; }
+  .sync-dot.error::before { background: var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
   @media (max-width: 768px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { display: none; }
@@ -507,12 +709,45 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">carnet<span>&</span>contacts</div>
+    <div class="login-subtitle">Connectez-vous pour accéder à vos contacts</div>
+
+    <div class="login-field">
+      <label>Adresse email</label>
+      <input type="email" id="loginEmail" placeholder="vous@exemple.com" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <label>Mot de passe</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+
+    <div class="login-error" id="loginError"></div>
+
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">
+      <span class="login-spinner" id="loginSpinner"></span>
+      <span id="loginBtnText">Se connecter</span>
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appWrapper">
+
 <header>
-  <div class="logo">Carnet<span> de </span>Gus</div>
+  <div class="logo">carnet<span>&</span>contacts</div>
   <div class="header-actions">
+    <span class="sync-dot connecting" id="syncStatus">Connexion…</span>
     <button class="btn btn-ghost" onclick="openImport()">⬆ Importer CSV</button>
     <button class="btn btn-ghost" onclick="exportCSV()">⬇ Exporter</button>
     <button class="btn btn-primary" onclick="openAdd()">+ Nouveau contact</button>
+    <div style="width:1px;height:24px;background:var(--border);margin:0 4px"></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="userEmail" style="font-size:12px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button class="btn btn-ghost" style="padding:8px 14px;font-size:13px" onclick="doLogout()" title="Se déconnecter">↩ Déco</button>
+    </div>
   </div>
 </header>
 
@@ -656,12 +891,18 @@
 
 <script>
 // ---- DATA ----
-const STORAGE_KEY = 'contacts_v1';
 let contacts = [];
 let selectedId = null;
 let activeFilter = 'all';
 let editingId = null;
 let pendingImport = [];
+
+function setDbStatus(state) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.className = 'sync-dot ' + state;
+  el.textContent = state === 'connected' ? 'Synchronisé' : state === 'connecting' ? 'Connexion…' : 'Hors ligne';
+}
 
 const COLORS = ['#c8f060','#60d0f0','#f0a060','#d060f0','#60f0a0','#f06090'];
 
@@ -675,37 +916,27 @@ function initials(first, last) {
   return ((first||'')[0]||'').toUpperCase() + ((last||'')[0]||'').toUpperCase();
 }
 
-function load() {
-  try { contacts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { contacts = []; }
-  if (!contacts.length) seedData();
-}
-
-function save() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
-}
-
-function seedData() {
-  contacts = [
-  {id:uid(),firstName:"Shun",lastName:"Liu",title:"Automotive Exterior Designer",company:"BYD",email:"shun.liu@byd.com",emailStatus:"Extrapolated",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/%e9%a1%ba-%e5%88%98-a63515161",city:"Shenzhen",state:"Guangdong",country:"China",email2:""},
-  {id:uid(),firstName:"Junhong",lastName:"Lu",title:"Automotive Interior Designer",company:"BYD",email:"junhong.lu@byd.com",emailStatus:"Verified",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/junhong-lu-0a6119292",city:"Pasadena",state:"California",country:"United States",email2:""},
-  {id:uid(),firstName:"Xu",lastName:"He",title:"Automotive Designer",company:"BYD",email:"xu.he@byd.com",emailStatus:"Extrapolated",mobile:"+1 626-340-8411",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/xu-he-4390a2167",city:"Los Angeles",state:"California",country:"United States",email2:""},
-  {id:uid(),firstName:"Wancheng",lastName:"Mai",title:"Automotive Exterior Designer",company:"BYD",email:"wancheng.mai@byd.com",emailStatus:"Extrapolated",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/wancheng-mai-a963531b3",city:"Guangzhou",state:"Guangdong",country:"China",email2:""},
-  {id:uid(),firstName:"Ran",lastName:"Luo",title:"Automotive Designer",company:"BYD",email:"ran.luo@byd.com",emailStatus:"Extrapolated",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/ran-luo-9a7996201",city:"New York",state:"New York",country:"United States",email2:""},
-  {id:uid(),firstName:"Xander",lastName:"Wang",title:"Automotive Exterior Designer",company:"BYD",email:"xander.wang@byd.com",emailStatus:"Verified",mobile:"+1 818-318-3502",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/xander-wang-4445a5161",city:"Pasadena",state:"California",country:"United States",email2:""},
-  {id:uid(),firstName:"Tomas",lastName:"Jiang",title:"Human Resources Director",company:"BYD",email:"tomas.jiang@byd.cn",emailStatus:"",mobile:"",corporate:"",linkedin:"https://www.linkedin.com/in/tomas-ping-jiang-431aab19b/",city:"",state:"",country:"",email2:""},
-  {id:uid(),firstName:"Tao",lastName:"Liu",title:"Automotive Designer",company:"Designworks, A BMW Group Company",email:"liu.tao@bmwgroupdesignworks.com",emailStatus:"Extrapolated",mobile:"",corporate:"+1 805-499-9590",linkedin:"http://www.linkedin.com/in/tao-liu-704b80108",city:"Shanghai",state:"Shanghai",country:"China",email2:""},
-  {id:uid(),firstName:"Liping",lastName:"Zhou",title:"Human Resources Manager",company:"Haima",email:"zhou@haima.com",emailStatus:"Extrapolated",mobile:"",corporate:"",linkedin:"http://www.linkedin.com/in/%e4%b8%bd%e5%b9%b3-%e5%91%a8-1527aa145",city:"Haikou",state:"Hainan",country:"China",email2:""},
-  {id:uid(),firstName:"Yufei",lastName:"Sun",title:"Automotive Designer",company:"NIO",email:"yufei.sun@nio.com",emailStatus:"Verified",mobile:"",corporate:"+86 21 6908 2018",linkedin:"http://www.linkedin.com/in/yufei-sun-6b62a8101",city:"Shanghai",state:"Shanghai",country:"China",email2:""},
-  {id:uid(),firstName:"Sophie",lastName:"Gooding",title:"HR Director",company:"NIO",email:"sgooding@nio.com",emailStatus:"",mobile:"",corporate:"",linkedin:"https://www.linkedin.com/in/sophiegooding1/",city:"",state:"",country:"UK",email2:""},
-  {id:uid(),firstName:"Lingling",lastName:"Du",title:"Talent Acquisition Specialist",company:"NIO",email:"lingling.du@nio.com",emailStatus:"",mobile:"",corporate:"",linkedin:"https://www.linkedin.com/in/lingling-du-a8a79515b/",city:"",state:"",country:"",email2:""},
-  {id:uid(),firstName:"Icy",lastName:"Hou",title:"Talent Acquisition Manager",company:"SAIC MOTOR",email:"guangxin_hou@shanghaigm.com",emailStatus:"Verified",mobile:"",corporate:"",linkedin:"http://www.linkedin.com/in/icy-hou-542b3344",city:"Shanghai",state:"Shanghai",country:"China",email2:"icyhgx11@hotmail.com"},
-  {id:uid(),firstName:"Jozef",lastName:"Kaban",title:"Automotive Designer",company:"SAIC MOTOR",email:"jozefkaban@saicmotor.com",emailStatus:"",mobile:"",corporate:"",linkedin:"",city:"",state:"",country:"",email2:""},
-  {id:uid(),firstName:"Zeyuan",lastName:"Lin",title:"Automotive Designer",company:"studiokurbos",email:"zeyuan.lin@kurbos.com",emailStatus:"Verified",mobile:"",corporate:"+49 711 518764411",linkedin:"http://www.linkedin.com/in/zeyuan-lin-079656155",city:"Shanghai",state:"Shanghai",country:"China",email2:""},
-  ];
-  save();
-}
-
 function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+// ---- FIRESTORE HELPERS ----
+async function saveToDb(contact) {
+  const { id, ...data } = contact;
+  try {
+    await window._setDoc(id, data);
+  } catch(e) {
+    console.error('Firestore write error:', e);
+    toast('❌ Erreur de sauvegarde');
+  }
+}
+
+async function deleteFromDb(id) {
+  try {
+    await window._deleteDoc(id);
+  } catch(e) {
+    console.error('Firestore delete error:', e);
+    toast('❌ Erreur de suppression');
+  }
+}
 
 // ---- RENDER ----
 function getFiltered() {
@@ -740,7 +971,7 @@ function render() {
       <span>Tous</span><span class="filter-badge">${contacts.length}</span>
     </div>
     ${[...companies].sort().map(co => `
-      <div class="filter-item ${activeFilter===co?'active':''}" onclick="setFilter('${co.replace(/'/g,"\\'")}')">
+      <div class="filter-item ${activeFilter===co?'active':''}" onclick="setFilter(${JSON.stringify(co)})">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${co}</span>
         <span class="filter-badge">${contacts.filter(c=>c.company===co).length}</span>
       </div>
@@ -812,7 +1043,7 @@ function selectContact(id) {
 
     <div class="field-group">
       <div class="field-label">Localisation</div>
-      ${c.city ? `<div class="field-row"><span class="field-icon">📍</span><span class="field-val">${[c.city,c.state,c.country].filter(Boolean).join(', ')}</span></div>` : 
+      ${c.city ? `<div class="field-row"><span class="field-icon">📍</span><span class="field-val">${[c.city,c.state,c.country].filter(Boolean).join(', ')}</span></div>` :
       c.country ? `<div class="field-row"><span class="field-icon">📍</span><span class="field-val">${c.country}</span></div>` : ''}
     </div>
 
@@ -863,7 +1094,7 @@ function openEdit(id) {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function saveContact() {
+async function saveContact() {
   const data = {
     firstName: document.getElementById('f_first').value.trim(),
     lastName: document.getElementById('f_last').value.trim(),
@@ -881,28 +1112,19 @@ function saveContact() {
 
   if (!data.firstName && !data.lastName) { alert('Veuillez saisir au moins un nom.'); return; }
 
-  if (editingId) {
-    const idx = contacts.findIndex(c => c.id === editingId);
-    contacts[idx] = { ...contacts[idx], ...data };
-    toast('Contact mis à jour ✓');
-    if (selectedId === editingId) selectContact(editingId);
-  } else {
-    data.id = uid();
-    contacts.push(data);
-    toast('Contact ajouté ✓');
-  }
+  const id = editingId || uid();
+  data.id = id;
 
-  save();
   closeModal();
-  render();
+  await saveToDb({ id, ...data });
+  toast(editingId ? 'Contact mis à jour ✓' : 'Contact ajouté ✓');
+  // render() will be called by onSnapshot
 }
 
-function deleteContact(id) {
+async function deleteContact(id) {
   if (!confirm('Supprimer ce contact ?')) return;
-  contacts = contacts.filter(c => c.id !== id);
-  save();
   closePanel();
-  render();
+  await deleteFromDb(id);
   toast('Contact supprimé');
 }
 
@@ -964,21 +1186,26 @@ function parseCSV(file) {
   reader.readAsText(file, 'UTF-8');
 }
 
-function confirmImport() {
-  // Merge: skip duplicates by email
+async function confirmImport() {
+  // Skip duplicates by email
   const existing = new Set(contacts.map(c => c.email).filter(Boolean));
-  let added = 0;
-  pendingImport.forEach(c => {
-    if (!c.email || !existing.has(c.email)) {
-      contacts.push(c);
-      if (c.email) existing.add(c.email);
-      added++;
-    }
-  });
-  save();
+  const toAdd = pendingImport.filter(c => !c.email || !existing.has(c.email));
+
   closeImport();
-  render();
-  toast(`${added} contact(s) importé(s) ✓`);
+  toast(`Import en cours…`);
+
+  // Firestore batch writes (max 500 per batch)
+  const BATCH_SIZE = 400;
+  for (let i = 0; i < toAdd.length; i += BATCH_SIZE) {
+    const batch = window._writeBatch();
+    toAdd.slice(i, i + BATCH_SIZE).forEach(c => {
+      const { id, ...data } = c;
+      batch.set(window._doc(id), data);
+    });
+    await batch.commit();
+  }
+
+  toast(`${toAdd.length} contact(s) importé(s) ✓`);
 }
 
 // ---- EXPORT ----
@@ -1009,9 +1236,58 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { closeModal(); closePanel(); closeImport(); }
 });
 
-// ---- INIT ----
-load();
+// ---- LOGIN / LOGOUT ----
+async function doLogin() {
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  const btn      = document.getElementById('loginBtn');
+  const spinner  = document.getElementById('loginSpinner');
+  const btnText  = document.getElementById('loginBtnText');
+
+  if (!email || !password) {
+    errEl.textContent = 'Veuillez remplir tous les champs.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Connexion…';
+
+  try {
+    await window._signIn(email, password);
+    // onAuthStateChanged handles the rest
+  } catch (err) {
+    spinner.style.display = 'none';
+    btnText.textContent = 'Se connecter';
+    btn.disabled = false;
+    const msgs = {
+      'auth/invalid-credential':    'Email ou mot de passe incorrect.',
+      'auth/user-not-found':        'Aucun compte trouvé avec cet email.',
+      'auth/wrong-password':        'Mot de passe incorrect.',
+      'auth/invalid-email':         'Adresse email invalide.',
+      'auth/too-many-requests':     'Trop de tentatives. Réessayez plus tard.',
+    };
+    errEl.textContent = msgs[err.code] || 'Erreur de connexion. Réessayez.';
+    errEl.classList.add('show');
+  }
+}
+
+async function doLogout() {
+  if (!confirm('Se déconnecter ?')) return;
+  await window._signOut();
+}
+
+// Enter key on login fields
+document.getElementById('loginEmail').addEventListener('keydown',    e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
+document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// Initial render (empty, Firestore will populate via onSnapshot)
 render();
 </script>
+
+</div><!-- #appWrapper -->
 </body>
 </html>
