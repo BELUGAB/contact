@@ -1153,13 +1153,34 @@ function handleCSVFile(input) {
   if (input.files[0]) parseCSV(input.files[0]);
 }
 
+// Properly parse a CSV line respecting quoted fields (handles ; and , separators)
+function parseCSVLine(line, sep) {
+  const fields = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i+1] === '"') { cur += '"'; i++; } // escaped quote
+      else inQuotes = !inQuotes;
+    } else if (ch === sep && !inQuotes) {
+      fields.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  fields.push(cur);
+  return fields.map(f => f.trim().replace(/^'+/, '')); // strip leading apostrophes too
+}
+
 function parseCSV(file) {
   const reader = new FileReader();
   reader.onload = e => {
     const text = e.target.result;
-    const lines = text.trim().split('\n');
+    // Split lines but ignore empty ones
+    const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
     const sep = lines[0].includes(';') ? ';' : ',';
-    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/\s+/g,''));
+    const headers = parseCSVLine(lines[0], sep).map(h => h.toLowerCase().replace(/\s+/g,''));
 
     const map = {
       firstname: 'firstName', lastname: 'lastName', title: 'title',
@@ -1170,11 +1191,11 @@ function parseCSV(file) {
     };
 
     pendingImport = lines.slice(1).map(line => {
-      const vals = line.split(sep);
+      const vals = parseCSVLine(line, sep);
       const obj = { id: uid() };
       headers.forEach((h, i) => {
         const key = map[h];
-        if (key) obj[key] = (vals[i]||'').trim().replace(/^'+/, '');
+        if (key) obj[key] = vals[i] || '';
       });
       return obj;
     }).filter(c => c.firstName || c.lastName || c.email);
