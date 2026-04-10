@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carnet de Contacts</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --accent: #c8f060;
+    --accent2: #60d0f0;
+    --text: #f0ede8;
+    --muted: #787878;
+    --danger: #f06060;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 40px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--accent); font-style: italic; }
+
+  .header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #0f0f0f;
+  }
+  .btn-primary:hover { background: #d8ff70; transform: translateY(-1px); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+
+  /* LAYOUT */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 73px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-top {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-box {
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px 10px 36px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  .search-box svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+
+  .stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 14px;
+  }
+  .stat {
+    flex: 1;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    color: var(--accent);
+  }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .filter-section {
+    padding: 16px 20px 8px;
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .filter-list {
+    padding: 0 12px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .filter-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .filter-item:hover { background: var(--surface); }
+  .filter-item.active { background: var(--surface2); color: var(--accent); }
+  .filter-badge {
+    background: var(--surface2);
+    color: var(--muted);
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 20px;
+  }
+  .filter-item.active .filter-badge { background: var(--accent); color: #0f0f0f; }
+
+  /* MAIN */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .toolbar-left {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .toolbar-left strong { color: var(--text); }
+
+  .toolbar-right { display: flex; gap: 10px; }
+
+  /* CONTACT LIST */
+  .contact-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 16px 24px;
+  }
+
+  .contact-card {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 4px;
+  }
+  .contact-card:hover { background: var(--surface); border-color: var(--border); }
+  .contact-card.selected { background: var(--surface); border-color: var(--accent); }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px;
+    font-weight: 400;
+    flex-shrink: 0;
+  }
+
+  .contact-info { min-width: 0; }
+  .contact-name {
+    font-weight: 500;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .contact-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .contact-meta { text-align: right; flex-shrink: 0; }
+  .status-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .status-Verified { background: rgba(200,240,96,0.15); color: var(--accent); }
+  .status-Extrapolated { background: rgba(96,208,240,0.15); color: var(--accent2); }
+  .status-other { background: var(--surface2); color: var(--muted); }
+
+  /* DETAIL PANEL */
+  .detail-panel {
+    position: fixed;
+    right: 0;
+    top: 73px;
+    bottom: 0;
+    width: 420px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: none;
+    flex-direction: column;
+    z-index: 50;
+    overflow-y: auto;
+  }
+  .detail-panel.open { display: flex; }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+  }
+  .panel-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+  }
+  .close-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .close-btn:hover { color: var(--text); background: var(--surface2); }
+
+  .panel-body { padding: 24px; }
+
+  .panel-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  .panel-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    line-height: 1.1;
+  }
+  .panel-title-role { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .field-group { margin-top: 24px; }
+  .field-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .field-row:last-child { border-bottom: none; }
+  .field-icon { color: var(--muted); font-size: 16px; width: 20px; text-align: center; }
+  .field-val { flex: 1; word-break: break-all; }
+  .field-val a { color: var(--accent2); text-decoration: none; }
+  .field-val a:hover { text-decoration: underline; }
+
+  .panel-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    width: 600px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+  }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 20px; }
+  .modal-body { padding: 24px; }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  input, select, textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  select option { background: var(--surface); }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    border-radius: 0 0 16px 16px;
+  }
+
+  /* IMPORT */
+  .import-zone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .import-zone:hover, .import-zone.drag { border-color: var(--accent); background: rgba(200,240,96,0.05); }
+  .import-zone p { color: var(--muted); font-size: 14px; margin-top: 8px; }
+
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 80px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty h3 { color: var(--text); font-family: 'DM Serif Display', serif; margin-bottom: 8px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent);
+    color: #0f0f0f;
+    padding: 12px 24px;
+    border-radius: 40px;
+    font-weight: 500;
+    font-size: 14px;
+    z-index: 999;
+    transition: transform 0.3s ease;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    header { padding: 16px 20px; }
+    .contact-list { padding: 12px; }
+    .detail-panel { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">carnet<span>&</span>contacts</div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="openImport()">⬆ Importer CSV</button>
+    <button class="btn btn-ghost" onclick="exportCSV()">⬇ Exporter</button>
+    <button class="btn btn-primary" onclick="openAdd()">+ Nouveau contact</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="search-box">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="searchInput" placeholder="Rechercher..." oninput="render()">
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-num" id="totalCount">0</div><div class="stat-label">Contacts</div></div>
+        <div class="stat"><div class="stat-num" id="companyCount">0</div><div class="stat-label">Entreprises</div></div>
+      </div>
+    </div>
+    <div class="filter-section">Entreprises</div>
+    <div class="filter-list" id="filterList"></div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar">
+      <div class="toolbar-left" id="toolbarInfo">Tous les contacts</div>
+      <div class="toolbar-right">
+        <select id="sortSelect" onchange="render()" style="padding:8px 12px;font-size:13px;">
+          <option value="name">Trier par nom</option>
+          <option value="company">Trier par entreprise</option>
+          <option value="country">Trier par pays</option>
+        </select>
+      </div>
+    </div>
+    <div class="contact-list" id="contactList"></div>
+  </main>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-panel" id="detailPanel">
+  <div class="panel-header">
+    <span class="panel-title">Fiche contact</span>
+    <button class="close-btn" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body" id="panelBody"></div>
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Nouveau contact</span>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Prénom</label>
+          <input id="f_first" type="text" placeholder="Prénom">
+        </div>
+        <div class="form-group">
+          <label>Nom</label>
+          <input id="f_last" type="text" placeholder="Nom">
+        </div>
+        <div class="form-group full">
+          <label>Titre / Poste</label>
+          <input id="f_title" type="text" placeholder="ex: Designer Automobile">
+        </div>
+        <div class="form-group full">
+          <label>Entreprise</label>
+          <input id="f_company" type="text" placeholder="Nom de l'entreprise">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input id="f_email" type="email" placeholder="email@exemple.com">
+        </div>
+        <div class="form-group">
+          <label>Statut email</label>
+          <select id="f_emailstatus">
+            <option value="">— Inconnu —</option>
+            <option value="Verified">Verified</option>
+            <option value="Extrapolated">Extrapolated</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Téléphone mobile</label>
+          <input id="f_mobile" type="text" placeholder="+33 6 ...">
+        </div>
+        <div class="form-group">
+          <label>Téléphone pro</label>
+          <input id="f_corporate" type="text" placeholder="+33 1 ...">
+        </div>
+        <div class="form-group full">
+          <label>LinkedIn</label>
+          <input id="f_linkedin" type="url" placeholder="https://linkedin.com/in/...">
+        </div>
+        <div class="form-group">
+          <label>Ville</label>
+          <input id="f_city" type="text">
+        </div>
+        <div class="form-group">
+          <label>Pays</label>
+          <input id="f_country" type="text">
+        </div>
+        <div class="form-group full">
+          <label>Email secondaire</label>
+          <input id="f_email2" type="email" placeholder="email2@exemple.com">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveContact()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importOverlay">
+  <div class="modal" style="width:480px">
+    <div class="modal-header">
+      <span class="modal-title">Importer un CSV</span>
+      <button class="close-btn" onclick="closeImport()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="import-zone" id="importZone" onclick="document.getElementById('csvFile').click()"
+           ondragover="this.classList.add('drag');event.preventDefault()"
+           ondragleave="this.classList.remove('drag')"
+           ondrop="handleDrop(event)">
+        <div style="font-size:36px">📂</div>
+        <p>Cliquez ou glissez-déposez votre fichier CSV</p>
+        <p style="font-size:12px;margin-top:4px">Séparateur : <code>;</code> ou <code>,</code></p>
+      </div>
+      <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSVFile(this)">
+      <div id="importPreview" style="font-size:13px;color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeImport()">Annuler</button>
+      <button class="btn btn-primary" id="importConfirm" style="display:none" onclick="confirmImport()">Importer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- DATA ----
+const STORAGE_KEY = 'contacts_v1';
+let contacts = [];
+let selectedId = null;
+let activeFilter = 'all';
+let editingId = null;
+let pendingImport = [];
+
+const COLORS = ['#c8f060','#60d0f0','#f0a060','#d060f0','#60f0a0','#f06090'];
+
+function colorFor(str) {
+  let h = 0;
+  for (let c of (str||'')) h = (h << 5) - h + c.charCodeAt(0);
+  return COLORS[Math.abs(h) % COLORS.length];
+}
+
+function initials(first, last) {
+  return ((first||'')[0]||'').toUpperCase() + ((last||'')[0]||'').toUpperCase();
+}
+
+function load() {
+  try { contacts = JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { contacts = []; }
+  if (!contacts.length) seedData();
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
+}
+
+function seedData() {
+  contacts = [
+  {id:uid(),firstName:"Shun",lastName:"Liu",title:"Automotive Exterior Designer",company:"BYD",email:"shun.liu@byd.com",emailStatus:"Extrapolated",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/%e9%a1%ba-%e5%88%98-a63515161",city:"Shenzhen",state:"Guangdong",country:"China",email2:""},
+  {id:uid(),firstName:"Junhong",lastName:"Lu",title:"Automotive Interior Designer",company:"BYD",email:"junhong.lu@byd.com",emailStatus:"Verified",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/junhong-lu-0a6119292",city:"Pasadena",state:"California",country:"United States",email2:""},
+  {id:uid(),firstName:"Xu",lastName:"He",title:"Automotive Designer",company:"BYD",email:"xu.he@byd.com",emailStatus:"Extrapolated",mobile:"+1 626-340-8411",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/xu-he-4390a2167",city:"Los Angeles",state:"California",country:"United States",email2:""},
+  {id:uid(),firstName:"Wancheng",lastName:"Mai",title:"Automotive Exterior Designer",company:"BYD",email:"wancheng.mai@byd.com",emailStatus:"Extrapolated",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/wancheng-mai-a963531b3",city:"Guangzhou",state:"Guangdong",country:"China",email2:""},
+  {id:uid(),firstName:"Ran",lastName:"Luo",title:"Automotive Designer",company:"BYD",email:"ran.luo@byd.com",emailStatus:"Extrapolated",mobile:"",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/ran-luo-9a7996201",city:"New York",state:"New York",country:"United States",email2:""},
+  {id:uid(),firstName:"Xander",lastName:"Wang",title:"Automotive Exterior Designer",company:"BYD",email:"xander.wang@byd.com",emailStatus:"Verified",mobile:"+1 818-318-3502",corporate:"+86 755 8988 8888",linkedin:"http://www.linkedin.com/in/xander-wang-4445a5161",city:"Pasadena",state:"California",country:"United States",email2:""},
+  {id:uid(),firstName:"Tomas",lastName:"Jiang",title:"Human Resources Director",company:"BYD",email:"tomas.jiang@byd.cn",emailStatus:"",mobile:"",corporate:"",linkedin:"https://www.linkedin.com/in/tomas-ping-jiang-431aab19b/",city:"",state:"",country:"",email2:""},
+  {id:uid(),firstName:"Tao",lastName:"Liu",title:"Automotive Designer",company:"Designworks, A BMW Group Company",email:"liu.tao@bmwgroupdesignworks.com",emailStatus:"Extrapolated",mobile:"",corporate:"+1 805-499-9590",linkedin:"http://www.linkedin.com/in/tao-liu-704b80108",city:"Shanghai",state:"Shanghai",country:"China",email2:""},
+  {id:uid(),firstName:"Liping",lastName:"Zhou",title:"Human Resources Manager",company:"Haima",email:"zhou@haima.com",emailStatus:"Extrapolated",mobile:"",corporate:"",linkedin:"http://www.linkedin.com/in/%e4%b8%bd%e5%b9%b3-%e5%91%a8-1527aa145",city:"Haikou",state:"Hainan",country:"China",email2:""},
+  {id:uid(),firstName:"Yufei",lastName:"Sun",title:"Automotive Designer",company:"NIO",email:"yufei.sun@nio.com",emailStatus:"Verified",mobile:"",corporate:"+86 21 6908 2018",linkedin:"http://www.linkedin.com/in/yufei-sun-6b62a8101",city:"Shanghai",state:"Shanghai",country:"China",email2:""},
+  {id:uid(),firstName:"Sophie",lastName:"Gooding",title:"HR Director",company:"NIO",email:"sgooding@nio.com",emailStatus:"",mobile:"",corporate:"",linkedin:"https://www.linkedin.com/in/sophiegooding1/",city:"",state:"",country:"UK",email2:""},
+  {id:uid(),firstName:"Lingling",lastName:"Du",title:"Talent Acquisition Specialist",company:"NIO",email:"lingling.du@nio.com",emailStatus:"",mobile:"",corporate:"",linkedin:"https://www.linkedin.com/in/lingling-du-a8a79515b/",city:"",state:"",country:"",email2:""},
+  {id:uid(),firstName:"Icy",lastName:"Hou",title:"Talent Acquisition Manager",company:"SAIC MOTOR",email:"guangxin_hou@shanghaigm.com",emailStatus:"Verified",mobile:"",corporate:"",linkedin:"http://www.linkedin.com/in/icy-hou-542b3344",city:"Shanghai",state:"Shanghai",country:"China",email2:"icyhgx11@hotmail.com"},
+  {id:uid(),firstName:"Jozef",lastName:"Kaban",title:"Automotive Designer",company:"SAIC MOTOR",email:"jozefkaban@saicmotor.com",emailStatus:"",mobile:"",corporate:"",linkedin:"",city:"",state:"",country:"",email2:""},
+  {id:uid(),firstName:"Zeyuan",lastName:"Lin",title:"Automotive Designer",company:"studiokurbos",email:"zeyuan.lin@kurbos.com",emailStatus:"Verified",mobile:"",corporate:"+49 711 518764411",linkedin:"http://www.linkedin.com/in/zeyuan-lin-079656155",city:"Shanghai",state:"Shanghai",country:"China",email2:""},
+  ];
+  save();
+}
+
+function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36); }
+
+// ---- RENDER ----
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const sort = document.getElementById('sortSelect').value;
+
+  let list = contacts.filter(c => {
+    if (activeFilter !== 'all' && c.company !== activeFilter) return false;
+    if (!q) return true;
+    return [c.firstName,c.lastName,c.email,c.company,c.title,c.city,c.country].some(v => (v||'').toLowerCase().includes(q));
+  });
+
+  list.sort((a,b) => {
+    if (sort === 'name') return `${a.lastName}${a.firstName}`.localeCompare(`${b.lastName}${b.firstName}`);
+    if (sort === 'company') return (a.company||'').localeCompare(b.company||'');
+    if (sort === 'country') return (a.country||'').localeCompare(b.country||'');
+  });
+  return list;
+}
+
+function render() {
+  const list = getFiltered();
+
+  // Stats
+  document.getElementById('totalCount').textContent = contacts.length;
+  const companies = new Set(contacts.map(c => c.company).filter(Boolean));
+  document.getElementById('companyCount').textContent = companies.size;
+
+  // Filters
+  const filterHTML = `
+    <div class="filter-item ${activeFilter==='all'?'active':''}" onclick="setFilter('all')">
+      <span>Tous</span><span class="filter-badge">${contacts.length}</span>
+    </div>
+    ${[...companies].sort().map(co => `
+      <div class="filter-item ${activeFilter===co?'active':''}" onclick="setFilter('${co.replace(/'/g,"\\'")}')">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${co}</span>
+        <span class="filter-badge">${contacts.filter(c=>c.company===co).length}</span>
+      </div>
+    `).join('')}
+  `;
+  document.getElementById('filterList').innerHTML = filterHTML;
+
+  // Toolbar
+  document.getElementById('toolbarInfo').innerHTML =
+    `<strong>${list.length}</strong> contact${list.length!==1?'s':''} ${activeFilter!=='all'?`— <em>${activeFilter}</em>`:''}`;
+
+  // List
+  if (!list.length) {
+    document.getElementById('contactList').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <h3>Aucun contact trouvé</h3>
+        <p>Essayez une autre recherche ou ajoutez un nouveau contact.</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('contactList').innerHTML = list.map(c => {
+    const color = colorFor(c.company);
+    const statusClass = c.emailStatus === 'Verified' ? 'status-Verified' : c.emailStatus === 'Extrapolated' ? 'status-Extrapolated' : 'status-other';
+    return `
+    <div class="contact-card ${selectedId===c.id?'selected':''}" onclick="selectContact('${c.id}')">
+      <div class="avatar" style="background:${color}22;color:${color}">${initials(c.firstName,c.lastName)}</div>
+      <div class="contact-info">
+        <div class="contact-name">${c.firstName} ${c.lastName}</div>
+        <div class="contact-sub">${[c.title,c.company].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="contact-meta">
+        ${c.emailStatus ? `<span class="status-badge ${statusClass}">${c.emailStatus}</span>` : ''}
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">${c.country||''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  render();
+}
+
+// ---- DETAIL PANEL ----
+function selectContact(id) {
+  selectedId = id;
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+
+  const color = colorFor(c.company);
+  const statusClass = c.emailStatus === 'Verified' ? 'status-Verified' : c.emailStatus === 'Extrapolated' ? 'status-Extrapolated' : 'status-other';
+
+  document.getElementById('panelBody').innerHTML = `
+    <div class="panel-avatar" style="background:${color}22;color:${color}">${initials(c.firstName,c.lastName)}</div>
+    <div class="panel-name">${c.firstName} ${c.lastName}</div>
+    <div class="panel-title-role">${[c.title,c.company].filter(Boolean).join(' · ')}</div>
+    ${c.emailStatus ? `<div style="margin-top:10px"><span class="status-badge ${statusClass}">${c.emailStatus}</span></div>` : ''}
+
+    <div class="field-group">
+      <div class="field-label">Coordonnées</div>
+      ${c.email ? `<div class="field-row"><span class="field-icon">✉</span><span class="field-val"><a href="mailto:${c.email}">${c.email}</a></span></div>` : ''}
+      ${c.email2 ? `<div class="field-row"><span class="field-icon">✉</span><span class="field-val"><a href="mailto:${c.email2}">${c.email2}</a></span></div>` : ''}
+      ${c.mobile ? `<div class="field-row"><span class="field-icon">📱</span><span class="field-val">${c.mobile}</span></div>` : ''}
+      ${c.corporate ? `<div class="field-row"><span class="field-icon">☎</span><span class="field-val">${c.corporate}</span></div>` : ''}
+      ${c.linkedin ? `<div class="field-row"><span class="field-icon">🔗</span><span class="field-val"><a href="${c.linkedin}" target="_blank">Profil LinkedIn</a></span></div>` : ''}
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Localisation</div>
+      ${c.city ? `<div class="field-row"><span class="field-icon">📍</span><span class="field-val">${[c.city,c.state,c.country].filter(Boolean).join(', ')}</span></div>` : 
+      c.country ? `<div class="field-row"><span class="field-icon">📍</span><span class="field-val">${c.country}</span></div>` : ''}
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="openEdit('${c.id}')">✏ Modifier</button>
+      <button class="btn btn-danger" onclick="deleteContact('${c.id}')">🗑 Supprimer</button>
+    </div>
+  `;
+
+  document.getElementById('detailPanel').classList.add('open');
+  render();
+}
+
+function closePanel() {
+  selectedId = null;
+  document.getElementById('detailPanel').classList.remove('open');
+  render();
+}
+
+// ---- ADD / EDIT ----
+function openAdd() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Nouveau contact';
+  ['first','last','title','company','email','mobile','corporate','linkedin','city','country','email2'].forEach(f => {
+    document.getElementById('f_'+f).value = '';
+  });
+  document.getElementById('f_emailstatus').value = '';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function openEdit(id) {
+  editingId = id;
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('modalTitle').textContent = 'Modifier le contact';
+  document.getElementById('f_first').value = c.firstName||'';
+  document.getElementById('f_last').value = c.lastName||'';
+  document.getElementById('f_title').value = c.title||'';
+  document.getElementById('f_company').value = c.company||'';
+  document.getElementById('f_email').value = c.email||'';
+  document.getElementById('f_emailstatus').value = c.emailStatus||'';
+  document.getElementById('f_mobile').value = c.mobile||'';
+  document.getElementById('f_corporate').value = c.corporate||'';
+  document.getElementById('f_linkedin').value = c.linkedin||'';
+  document.getElementById('f_city').value = c.city||'';
+  document.getElementById('f_country').value = c.country||'';
+  document.getElementById('f_email2').value = c.email2||'';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveContact() {
+  const data = {
+    firstName: document.getElementById('f_first').value.trim(),
+    lastName: document.getElementById('f_last').value.trim(),
+    title: document.getElementById('f_title').value.trim(),
+    company: document.getElementById('f_company').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    emailStatus: document.getElementById('f_emailstatus').value,
+    mobile: document.getElementById('f_mobile').value.trim(),
+    corporate: document.getElementById('f_corporate').value.trim(),
+    linkedin: document.getElementById('f_linkedin').value.trim(),
+    city: document.getElementById('f_city').value.trim(),
+    country: document.getElementById('f_country').value.trim(),
+    email2: document.getElementById('f_email2').value.trim(),
+  };
+
+  if (!data.firstName && !data.lastName) { alert('Veuillez saisir au moins un nom.'); return; }
+
+  if (editingId) {
+    const idx = contacts.findIndex(c => c.id === editingId);
+    contacts[idx] = { ...contacts[idx], ...data };
+    toast('Contact mis à jour ✓');
+    if (selectedId === editingId) selectContact(editingId);
+  } else {
+    data.id = uid();
+    contacts.push(data);
+    toast('Contact ajouté ✓');
+  }
+
+  save();
+  closeModal();
+  render();
+}
+
+function deleteContact(id) {
+  if (!confirm('Supprimer ce contact ?')) return;
+  contacts = contacts.filter(c => c.id !== id);
+  save();
+  closePanel();
+  render();
+  toast('Contact supprimé');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  editingId = null;
+}
+
+// ---- IMPORT CSV ----
+function openImport() { document.getElementById('importOverlay').classList.add('open'); }
+function closeImport() {
+  document.getElementById('importOverlay').classList.remove('open');
+  document.getElementById('importPreview').innerHTML = '';
+  document.getElementById('importConfirm').style.display = 'none';
+  pendingImport = [];
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('importZone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) parseCSV(file);
+}
+
+function handleCSVFile(input) {
+  if (input.files[0]) parseCSV(input.files[0]);
+}
+
+function parseCSV(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    const sep = lines[0].includes(';') ? ';' : ',';
+    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/\s+/g,''));
+
+    const map = {
+      firstname: 'firstName', lastname: 'lastName', title: 'title',
+      companyname: 'company', email: 'email', emailstatus: 'emailStatus',
+      mobilephone: 'mobile', corporatephone: 'corporate',
+      personlinkedinurl: 'linkedin', city: 'city', state: 'state',
+      country: 'country', secondaryemail: 'email2'
+    };
+
+    pendingImport = lines.slice(1).map(line => {
+      const vals = line.split(sep);
+      const obj = { id: uid() };
+      headers.forEach((h, i) => {
+        const key = map[h];
+        if (key) obj[key] = (vals[i]||'').trim().replace(/^'+/, '');
+      });
+      return obj;
+    }).filter(c => c.firstName || c.lastName || c.email);
+
+    document.getElementById('importPreview').innerHTML =
+      `<p style="color:var(--accent);margin-top:12px">✓ ${pendingImport.length} contact(s) prêts à importer</p>`;
+    document.getElementById('importConfirm').style.display = 'inline-flex';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function confirmImport() {
+  // Merge: skip duplicates by email
+  const existing = new Set(contacts.map(c => c.email).filter(Boolean));
+  let added = 0;
+  pendingImport.forEach(c => {
+    if (!c.email || !existing.has(c.email)) {
+      contacts.push(c);
+      if (c.email) existing.add(c.email);
+      added++;
+    }
+  });
+  save();
+  closeImport();
+  render();
+  toast(`${added} contact(s) importé(s) ✓`);
+}
+
+// ---- EXPORT ----
+function exportCSV() {
+  const headers = ['First Name','Last Name','Title','Company Name','Email','Email Status','Mobile Phone','Corporate Phone','Person Linkedin Url','City','State','Country','Secondary Email'];
+  const rows = contacts.map(c => [
+    c.firstName,c.lastName,c.title,c.company,c.email,c.emailStatus,c.mobile,c.corporate,c.linkedin,c.city,c.state||'',c.country,c.email2
+  ].map(v => `"${(v||'').replace(/"/g,'""')}"`).join(';'));
+
+  const blob = new Blob([headers.join(';')+'\n'+rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'contacts_export.csv';
+  a.click();
+  toast('Export téléchargé ✓');
+}
+
+// ---- TOAST ----
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ---- KEYBOARD ----
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closePanel(); closeImport(); }
+});
+
+// ---- INIT ----
+load();
+render();
+</script>
+</body>
+</html>
