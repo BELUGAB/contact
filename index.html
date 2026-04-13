@@ -674,6 +674,95 @@
   /* APP WRAPPER — hidden until logged in */
   #appWrapper { display: none; }
 
+  .filter-pill {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .filter-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-pill.active { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
+
+  /* CONTACTED TOGGLE */
+  .contacted-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+    margin-top: 14px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    transition: all 0.2s;
+    font-size: 14px;
+    color: var(--muted);
+    width: 100%;
+    justify-content: space-between;
+  }
+  .contacted-toggle:hover { border-color: var(--accent); }
+  .contacted-toggle.done {
+    border-color: var(--accent);
+    background: rgba(200,240,96,0.08);
+    color: var(--accent);
+  }
+  .toggle-switch {
+    width: 36px;
+    height: 20px;
+    border-radius: 20px;
+    background: var(--border);
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.2s;
+  }
+  .contacted-toggle.done .toggle-switch { background: var(--accent); }
+  .contacted-toggle.done .toggle-switch::after { transform: translateX(16px); }
+
+  /* contacted pill in list */
+  .pill-contacted {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    background: rgba(200,240,96,0.12);
+    color: var(--accent);
+    margin-top: 4px;
+  }
+  .pill-not-contacted {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    background: var(--surface2);
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
   /* SYNC STATUS */
   .sync-dot {
     display: inline-flex;
@@ -770,7 +859,12 @@
   <main class="main">
     <div class="toolbar">
       <div class="toolbar-left" id="toolbarInfo">Tous les contacts</div>
-      <div class="toolbar-right">
+      <div class="toolbar-right" style="display:flex;align-items:center;gap:10px;">
+        <div style="display:flex;gap:6px;">
+          <button class="filter-pill active" id="pill-all"      onclick="setContactedFilter('all')">Tous</button>
+          <button class="filter-pill"        id="pill-pending"  onclick="setContactedFilter('pending')">⏳ À contacter</button>
+          <button class="filter-pill"        id="pill-done"     onclick="setContactedFilter('done')">✓ Contactés</button>
+        </div>
         <select id="sortSelect" onchange="render()" style="padding:8px 12px;font-size:13px;">
           <option value="name">Trier par nom</option>
           <option value="company">Trier par entreprise</option>
@@ -894,6 +988,7 @@
 let contacts = [];
 let selectedId = null;
 let activeFilter = 'all';
+let contactedFilter = 'all'; // 'all' | 'pending' | 'done'
 let editingId = null;
 let pendingImport = [];
 
@@ -945,6 +1040,8 @@ function getFiltered() {
 
   let list = contacts.filter(c => {
     if (activeFilter !== 'all' && c.company !== activeFilter) return false;
+    if (contactedFilter === 'done'    && !c.contacted) return false;
+    if (contactedFilter === 'pending' &&  c.contacted) return false;
     if (!q) return true;
     return [c.firstName,c.lastName,c.email,c.company,c.title,c.city,c.country].some(v => (v||'').toLowerCase().includes(q));
   });
@@ -959,11 +1056,21 @@ function getFiltered() {
 
 function render() {
   const list = getFiltered();
+  const doneCount    = contacts.filter(c => c.contacted).length;
+  const pendingCount = contacts.length - doneCount;
 
   // Stats
   document.getElementById('totalCount').textContent = contacts.length;
   const companies = new Set(contacts.map(c => c.company).filter(Boolean));
   document.getElementById('companyCount').textContent = companies.size;
+
+  // Update pill labels with counts
+  document.getElementById('pill-all').textContent     = `Tous (${contacts.length})`;
+  document.getElementById('pill-pending').textContent = `⏳ À contacter (${pendingCount})`;
+  document.getElementById('pill-done').textContent    = `✓ Contactés (${doneCount})`;
+  ['all','pending','done'].forEach(v => {
+    document.getElementById('pill-'+v).classList.toggle('active', contactedFilter === v);
+  });
 
   // Filters — use data-company attribute instead of inline onclick
   const filterEl = document.getElementById('filterList');
@@ -987,9 +1094,9 @@ function render() {
   if (!list.length) {
     document.getElementById('contactList').innerHTML = `
       <div class="empty">
-        <div class="empty-icon">🔍</div>
-        <h3>Aucun contact trouvé</h3>
-        <p>Essayez une autre recherche ou ajoutez un nouveau contact.</p>
+        <div class="empty-icon">${contactedFilter==='done' ? '✓' : contactedFilter==='pending' ? '⏳' : '🔍'}</div>
+        <h3>${contactedFilter==='done' ? 'Aucun contacté' : contactedFilter==='pending' ? 'Tous ont été contactés !' : 'Aucun contact trouvé'}</h3>
+        <p>${contactedFilter==='pending' ? 'Bravo, la liste est vide 🎉' : 'Essayez une autre recherche ou ajoutez un nouveau contact.'}</p>
       </div>`;
     return;
   }
@@ -1005,8 +1112,10 @@ function render() {
         <div class="contact-sub">${[c.title,c.company].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="contact-meta">
-        ${c.emailStatus ? `<span class="status-badge ${statusClass}">${c.emailStatus}</span>` : ''}
-        <div style="font-size:11px;color:var(--muted);margin-top:4px">${c.country||''}</div>
+        ${c.contacted
+          ? `<span class="pill-contacted">✓ Contacté</span>`
+          : `<span class="pill-not-contacted">À contacter</span>`}
+        ${c.emailStatus ? `<div style="margin-top:4px"><span class="status-badge ${statusClass}">${c.emailStatus}</span></div>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1028,6 +1137,11 @@ document.getElementById('contactList').addEventListener('click', e => {
 
 function setFilter(f) { activeFilter = f; render(); }
 
+function setContactedFilter(f) {
+  contactedFilter = f;
+  render();
+}
+
 // ---- DETAIL PANEL ----
 function selectContact(id) {
   selectedId = id;
@@ -1042,6 +1156,11 @@ function selectContact(id) {
     <div class="panel-name">${c.firstName} ${c.lastName}</div>
     <div class="panel-title-role">${[c.title,c.company].filter(Boolean).join(' · ')}</div>
     ${c.emailStatus ? `<div style="margin-top:10px"><span class="status-badge ${statusClass}">${c.emailStatus}</span></div>` : ''}
+
+    <div class="contacted-toggle ${c.contacted?'done':''}" id="contactedToggle" onclick="toggleContacted('${c.id}')">
+      <span>${c.contacted ? '✓ Déjà contacté' : 'Pas encore contacté'}</span>
+      <div class="toggle-switch"></div>
+    </div>
 
     <div class="field-group">
       <div class="field-label">Coordonnées</div>
@@ -1072,6 +1191,23 @@ function closePanel() {
   selectedId = null;
   document.getElementById('detailPanel').classList.remove('open');
   render();
+}
+
+async function toggleContacted(id) {
+  const c = contacts.find(x => x.id === id);
+  if (!c) return;
+  const newVal = !c.contacted;
+  // Optimistic UI update
+  c.contacted = newVal;
+  const toggle = document.getElementById('contactedToggle');
+  if (toggle) {
+    toggle.classList.toggle('done', newVal);
+    toggle.querySelector('span').textContent = newVal ? '✓ Déjà contacté' : 'Pas encore contacté';
+  }
+  render();
+  // Persist to Firestore
+  await saveToDb({ ...c });
+  toast(newVal ? '✓ Marqué comme contacté' : 'Marqué comme non contacté');
 }
 
 // ---- ADD / EDIT ----
