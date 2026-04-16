@@ -690,6 +690,27 @@
   .filter-pill:hover { border-color: var(--accent); color: var(--accent); }
   .filter-pill.active { background: var(--accent); color: #0f0f0f; border-color: var(--accent); }
 
+  /* EXPORT LIST */
+  .export-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.12s;
+    border-bottom: 1px solid var(--border);
+  }
+  .export-item:last-child { border-bottom: none; }
+  .export-item:hover { background: var(--surface2); }
+  .export-item input[type=checkbox] {
+    width: 16px; height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .export-item-name { font-size: 14px; font-weight: 500; flex: 1; }
+  .export-item-sub  { font-size: 12px; color: var(--muted); }
+
   /* CONTACTED TOGGLE */
   .contacted-toggle {
     display: inline-flex;
@@ -830,7 +851,7 @@
   <div class="header-actions">
     <span class="sync-dot connecting" id="syncStatus">Connexion…</span>
     <button class="btn btn-ghost" onclick="openImport()">⬆ Importer CSV</button>
-    <button class="btn btn-ghost" onclick="exportCSV()">⬇ Exporter</button>
+    <button class="btn btn-ghost" onclick="openExport()">⬇ Exporter</button>
     <button class="btn btn-primary" onclick="openAdd()">+ Nouveau contact</button>
     <div style="width:1px;height:24px;background:var(--border);margin:0 4px"></div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -977,6 +998,44 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeImport()">Annuler</button>
       <button class="btn btn-primary" id="importConfirm" style="display:none" onclick="confirmImport()">Importer</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="exportOverlay">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <span class="modal-title">Exporter les contacts</span>
+      <button class="close-btn" onclick="closeExport()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Quick filters -->
+      <div class="field-label" style="margin-bottom:12px">Sélection rapide</div>
+      <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
+        <button class="btn btn-ghost" style="font-size:13px" onclick="exportQuickSelect('all')">Tous <span id="eq-all"></span></button>
+        <button class="btn btn-ghost" style="font-size:13px" onclick="exportQuickSelect('done')">✓ Contactés <span id="eq-done"></span></button>
+        <button class="btn btn-ghost" style="font-size:13px" onclick="exportQuickSelect('pending')">⏳ À contacter <span id="eq-pending"></span></button>
+        <button class="btn btn-ghost" style="font-size:13px" onclick="exportQuickSelect('none')">Aucun</button>
+      </div>
+
+      <!-- Manual list -->
+      <div class="field-label" style="margin-bottom:10px">Sélection manuelle</div>
+      <div style="position:relative;margin-bottom:10px">
+        <div class="search-box">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="exportSearch" placeholder="Filtrer la liste…" oninput="renderExportList()">
+        </div>
+      </div>
+      <div id="exportList" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;"></div>
+      <div style="margin-top:10px;font-size:13px;color:var(--muted)">
+        <span id="exportSelCount">0</span> contact(s) sélectionné(s)
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeExport()">Annuler</button>
+      <button class="btn btn-primary" onclick="doExport()">⬇ Télécharger le CSV</button>
     </div>
   </div>
 </div>
@@ -1377,18 +1436,82 @@ async function confirmImport() {
 }
 
 // ---- EXPORT ----
-function exportCSV() {
-  const headers = ['First Name','Last Name','Title','Company Name','Email','Email Status','Mobile Phone','Corporate Phone','Person Linkedin Url','City','State','Country','Secondary Email'];
-  const rows = contacts.map(c => [
-    c.firstName,c.lastName,c.title,c.company,c.email,c.emailStatus,c.mobile,c.corporate,c.linkedin,c.city,c.state||'',c.country,c.email2
+let exportSelected = new Set(); // set of contact ids
+
+function openExport() {
+  // Pre-select all by default
+  exportSelected = new Set(contacts.map(c => c.id));
+  updateExportCounts();
+  renderExportList();
+  document.getElementById('exportSearch').value = '';
+  document.getElementById('exportOverlay').classList.add('open');
+}
+
+function closeExport() {
+  document.getElementById('exportOverlay').classList.remove('open');
+}
+
+function updateExportCounts() {
+  document.getElementById('eq-all').textContent     = `(${contacts.length})`;
+  document.getElementById('eq-done').textContent    = `(${contacts.filter(c=>c.contacted).length})`;
+  document.getElementById('eq-pending').textContent = `(${contacts.filter(c=>!c.contacted).length})`;
+  document.getElementById('exportSelCount').textContent = exportSelected.size;
+}
+
+function exportQuickSelect(mode) {
+  if      (mode === 'all')     exportSelected = new Set(contacts.map(c => c.id));
+  else if (mode === 'done')    exportSelected = new Set(contacts.filter(c =>  c.contacted).map(c => c.id));
+  else if (mode === 'pending') exportSelected = new Set(contacts.filter(c => !c.contacted).map(c => c.id));
+  else if (mode === 'none')    exportSelected = new Set();
+  renderExportList();
+}
+
+function renderExportList() {
+  const q = (document.getElementById('exportSearch').value || '').toLowerCase();
+  const filtered = contacts.filter(c =>
+    !q || [c.firstName,c.lastName,c.company,c.email].some(v => (v||'').toLowerCase().includes(q))
+  ).sort((a,b) => `${a.lastName}${a.firstName}`.localeCompare(`${b.lastName}${b.firstName}`));
+
+  document.getElementById('exportList').innerHTML = filtered.map(c => `
+    <label class="export-item">
+      <input type="checkbox" ${exportSelected.has(c.id)?'checked':''} onchange="toggleExportItem('${c.id}', this.checked)">
+      <div class="avatar" style="width:32px;height:32px;border-radius:8px;font-size:13px;flex-shrink:0;background:${colorFor(c.company)}22;color:${colorFor(c.company)};display:flex;align-items:center;justify-content:center;">
+        ${initials(c.firstName,c.lastName)}
+      </div>
+      <div>
+        <div class="export-item-name">${c.firstName} ${c.lastName}</div>
+        <div class="export-item-sub">${[c.company, c.contacted ? '✓ Contacté' : '⏳ À contacter'].filter(Boolean).join(' · ')}</div>
+      </div>
+    </label>
+  `).join('');
+
+  updateExportCounts();
+}
+
+function toggleExportItem(id, checked) {
+  if (checked) exportSelected.add(id);
+  else exportSelected.delete(id);
+  document.getElementById('exportSelCount').textContent = exportSelected.size;
+}
+
+function doExport() {
+  const toExport = contacts.filter(c => exportSelected.has(c.id));
+  if (!toExport.length) { toast('Aucun contact sélectionné'); return; }
+
+  const headers = ['First Name','Last Name','Title','Company Name','Email','Email Status','Mobile Phone','Corporate Phone','Person Linkedin Url','City','State','Country','Secondary Email','Contacted'];
+  const rows = toExport.map(c => [
+    c.firstName,c.lastName,c.title,c.company,c.email,c.emailStatus,
+    c.mobile,c.corporate,c.linkedin,c.city,c.state||'',c.country,c.email2,
+    c.contacted ? 'Oui' : 'Non'
   ].map(v => `"${(v||'').replace(/"/g,'""')}"`).join(';'));
 
   const blob = new Blob([headers.join(';')+'\n'+rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'contacts_export.csv';
+  a.download = `contacts_export_${toExport.length}.csv`;
   a.click();
-  toast('Export téléchargé ✓');
+  closeExport();
+  toast(`${toExport.length} contact(s) exporté(s) ✓`);
 }
 
 // ---- TOAST ----
